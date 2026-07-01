@@ -1,0 +1,15 @@
+# Netlify deploy configuration for SMED Up (static PWA).
+# Cloudflare Pages works out of the box via public/_redirects.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback so client-side routes (e.g. /projeto/:id/analise) resolve to index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
