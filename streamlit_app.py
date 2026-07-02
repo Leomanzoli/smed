@@ -99,6 +99,9 @@ with st.sidebar:
             st.session_state["confirm_new"] = False
             st.rerun()
 
+    st.divider()
+    views.about_sidebar()
+
 # --------------------------------------------------------------------------- #
 # Consent gate (LGPD)
 # --------------------------------------------------------------------------- #
@@ -121,8 +124,7 @@ pages = [
     st.Page(views.action_plan, title=t("nav.action"), icon="✅", url_path="plano"),
     st.Page(views.help_page, title=t("nav.help"), icon="❓", url_path="ajuda"),
     st.Page(views.privacy, title=t("nav.privacy"), icon="🔒", url_path="privacidade"),
-    st.Page(views.about, title=t("nav.about"), icon="👤", url_path="sobre"),
 ]
 st.navigation(pages).run()
 
-st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up · build 2026-07-01-b")
+st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up · build 2026-07-01-c")

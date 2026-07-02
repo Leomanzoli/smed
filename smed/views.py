@@ -157,17 +157,15 @@ def _task_card(project: dict, task: dict) -> None:
         dur = format_hms(duration_minutes(task.get("inicio"), task.get("fim")))
         nome = task.get("tarefa") or t("tasks.no_name")
         num = f" · #{task['task']}" if task.get("task") else ""
-        st.markdown(f"**{nome}**{num}")
-        if task.get("descricao"):
-            st.write(task["descricao"])
         ini = task.get("inicio") or "--:--"
         fim = task.get("fim") or "--:--"
-        st.caption(f"🕐 {ini} → {fim}  ·  ⏱️ {dur}  ·  I×E: {_ie_label(task.get('ie_inicial'))}")
-        c1, c2 = st.columns(2)
-        if c1.button("✏️ " + t("tasks.edit"), key=f"edit_{tid}", width="stretch"):
+        ci, ce, cd = st.columns([8, 1, 1], vertical_alignment="center")
+        ci.markdown(f"**{nome}**{num}")
+        ci.caption(f"🕐 {ini} → {fim} · ⏱️ {dur} · I×E: {_ie_label(task.get('ie_inicial'))}")
+        if ce.button("✏️", key=f"edit_{tid}", help=t("tasks.edit"), width="stretch"):
             st.session_state["edit_task_id"] = tid
             st.rerun()
-        if c2.button("🗑️ " + t("tasks.delete"), key=f"del_{tid}", width="stretch"):
+        if cd.button("🗑️", key=f"del_{tid}", help=t("tasks.delete"), width="stretch"):
             project["tasks"] = [x for x in project.get("tasks", []) if x["id"] != tid]
             prune_analysis(project)
             st.session_state.pop("edit_task_id", None)
@@ -260,11 +258,8 @@ def analyze() -> None:
         return
 
     analysis = project.setdefault("analysis", {})
-    ecrs_opts = ["", "e", "c", "r", "s"]
-    ecrs_labels = {
-        "": t("ecrs.none"), "e": t("ecrs.e"), "c": t("ecrs.c"),
-        "r": t("ecrs.r"), "s": t("ecrs.s"),
-    }
+    ecrs_opts = ["e", "c", "r", "s"]
+    ecrs_labels = {"e": t("ecrs.e"), "c": t("ecrs.c"), "r": t("ecrs.r"), "s": t("ecrs.s")}
     for task in tasks:
         tid = task["id"]
         a = analysis.get(tid, {})
@@ -277,17 +272,18 @@ def analyze() -> None:
                 f"🕐 {task.get('inicio') or '--:--'} → {task.get('fim') or '--:--'}"
                 f"  ·  ⏱️ {dur}  ·  {t('analyze.ie_inicial')}: {_ie_label(task.get('ie_inicial'))}"
             )
-            # I x E (final) as a simple switch. Seed from initial classification.
+            # I x E (final): a two-option switch (not an on/off toggle).
             seed_ie = a.get("ie") or task.get("ie_inicial") or "interna"
-            is_ext = st.toggle(
-                t("analyze.ie_toggle"), value=(seed_ie == "externa"), key=f"an_ie_{tid}")
-            ie = "externa" if is_ext else "interna"
-            st.caption(f"{t('analyze.ie')}: **{_ie_label(ie)}**")
-            # ECRS: choose a single option (E, C, R or S).
-            cur_ecrs = next((k for k in ("e", "c", "r", "s") if a.get(k)), "")
+            sel_ie = st.segmented_control(
+                t("analyze.ie"), options=["interna", "externa"], format_func=_ie_label,
+                default=seed_ie if seed_ie in ("interna", "externa") else "interna",
+                key=f"an_ie_{tid}")
+            ie = sel_ie if sel_ie in ("interna", "externa") else seed_ie
+            # ECRS: pick a single option (no "none" pill; may be left unselected).
+            cur_ecrs = next((k for k in ecrs_opts if a.get(k)), None)
             sel = st.radio(
                 t("analyze.ecrs"), options=ecrs_opts,
-                index=ecrs_opts.index(cur_ecrs),
+                index=ecrs_opts.index(cur_ecrs) if cur_ecrs else None,
                 format_func=lambda k: ecrs_labels[k], horizontal=True, key=f"an_ecrs_{tid}")
             e, c, r, s = sel == "e", sel == "c", sel == "r", sel == "s"
             ganho = st.number_input(
@@ -560,30 +556,26 @@ exemplo, nomes, matrículas, e-mails) inseridos no plano 5W2H e minimizá-los qu
 
 
 # --------------------------------------------------------------------------- #
-# About / branding
+# About / branding (compact, rendered in the sidebar)
 # --------------------------------------------------------------------------- #
 def _img(path: str):
     return path if os.path.exists(path) else None
 
 
-def about() -> None:
-    st.header(t("about.title"))
-    c1, c2 = st.columns([1, 2], vertical_alignment="center")
-    with c1:
+def about_sidebar() -> None:
+    """Render developer/branding info compactly inside the sidebar."""
+    with st.expander(t("about.title")):
         photo = _img(os.path.join(ASSETS, "leonardo.jpg"))
         if photo:
-            st.image(photo, width=200)
-    with c2:
-        st.subheader(t("about.dev"))
-        st.write(f"**{t('about.role')}**")
-        st.write(t("about.context"))
-
-    st.divider()
-    st.subheader(t("about.partners"))
-    p1, p2, _sp = st.columns([1, 1, 2], vertical_alignment="center")
-    sodexo = _img(os.path.join(ASSETS, "logo sodexo.png"))
-    vale = _img(os.path.join(ASSETS, "Logo vale.png"))
-    if sodexo:
-        p1.image(sodexo, width=130)
-    if vale:
-        p2.image(vale, width=130)
+            st.image(photo, width=120)
+        st.markdown(f"**{t('about.dev')}**")
+        st.caption(t("about.role"))
+        st.caption(t("about.context"))
+        st.markdown(f"**{t('about.partners')}**")
+        lp1, lp2 = st.columns(2)
+        sodexo = _img(os.path.join(ASSETS, "logo sodexo.png"))
+        vale = _img(os.path.join(ASSETS, "Logo vale.png"))
+        if sodexo:
+            lp1.image(sodexo, width=90)
+        if vale:
+            lp2.image(vale, width=90)
