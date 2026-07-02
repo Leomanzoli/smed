@@ -1,6 +1,7 @@
 """Page render functions for the SMED Streamlit app."""
 from __future__ import annotations
 
+import hashlib
 import os
 import sys
 from datetime import date, datetime, time as dtime, timedelta
@@ -235,16 +236,20 @@ def collect() -> None:
         up = st.file_uploader(t("tasks.import_field"), type=["xlsx"], key="field_up",
                               label_visibility="collapsed")
         if up is not None:
-            partial, err = excel_field.parse_bytes(up.getvalue())
-            if err:
-                st.error(err)
-            else:
-                project["basic"] = {**basic, **partial.get("basic", {})}
-                project["section_label"] = partial.get("section_label") or project.get("section_label", "")
-                project["tasks"] = partial.get("tasks", [])
-                project["analysis"] = partial.get("analysis", {})
-                st.success(t("tasks.import_ok"))
-                st.rerun()
+            data = up.getvalue()
+            sig = hashlib.md5(data).hexdigest()
+            if st.session_state.get("field_up_sig") != sig:
+                partial, err = excel_field.parse_bytes(data)
+                if err:
+                    st.error(err)
+                else:
+                    project["basic"] = {**basic, **partial.get("basic", {})}
+                    project["section_label"] = partial.get("section_label") or project.get("section_label", "")
+                    project["tasks"] = partial.get("tasks", [])
+                    project["analysis"] = partial.get("analysis", {})
+                    st.session_state["field_up_sig"] = sig
+                    st.success(t("tasks.import_ok"))
+                    st.rerun()
 
 
 # --------------------------------------------------------------------------- #

@@ -1,6 +1,7 @@
 """SMED Up — Streamlit app entry point (deployable to streamlit.app)."""
 from __future__ import annotations
 
+import hashlib
 import sys
 
 import streamlit as st
@@ -87,13 +88,17 @@ with st.sidebar:
     )
     up = st.file_uploader(t("side.import_json"), type=["json"], key="json_up")
     if up is not None:
-        imported, err = project_io.from_json_bytes(up.getvalue())
-        if err:
-            st.error(err)
-        else:
-            st.session_state["project"] = imported
-            st.success(t("side.import_ok"))
-            st.rerun()
+        data = up.getvalue()
+        sig = hashlib.md5(data).hexdigest()
+        if st.session_state.get("json_up_sig") != sig:
+            imported, err = project_io.from_json_bytes(data)
+            if err:
+                st.error(err)
+            else:
+                st.session_state["project"] = imported
+                st.session_state["json_up_sig"] = sig
+                st.success(t("side.import_ok"))
+                st.rerun()
 
     st.divider()
     if st.button(t("side.new"), width="stretch"):
@@ -101,7 +106,8 @@ with st.sidebar:
     if st.session_state.get("confirm_new"):
         if st.button(f"⚠️ {t('side.new_confirm')}", type="primary", width="stretch"):
             reset_project()
-            st.session_state["confirm_new"] = False
+            for _k in ("confirm_new", "field_up_sig", "json_up_sig", "edit_task_id", "edit_action_id"):
+                st.session_state.pop(_k, None)
             st.rerun()
 
     st.divider()
@@ -132,4 +138,4 @@ pages = [
 ]
 st.navigation(pages).run()
 
-st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up · build 2026-07-01-d")
+st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up · build 2026-07-01-e")
