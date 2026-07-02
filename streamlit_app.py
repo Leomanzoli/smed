@@ -15,9 +15,10 @@ st.set_page_config(page_title="SMED Up", page_icon="⏱️", layout="wide")
 st.markdown(
     """
     <style>
-      /* Center content with a comfortable reading width on desktop; full width on mobile */
+      /* Center content with a comfortable, adaptive width (grows with the screen,
+         capped on very large monitors, full width on phones) */
       .block-container {
-        max-width: 980px;
+        max-width: min(1200px, 92vw);
         padding-top: 2.2rem;
         padding-bottom: 4rem;
       }
@@ -34,9 +35,9 @@ st.markdown(
         border-radius: 8px;
         font-weight: 600;
       }
-      /* On phones: let column rows wrap so nothing gets cramped */
+      /* On phones: full width + let column rows wrap so nothing gets cramped */
       @media (max-width: 640px) {
-        .block-container { padding-top: 1.4rem; padding-left: 1rem; padding-right: 1rem; }
+        .block-container { max-width: 100%; padding: 1.4rem 1rem 3rem; }
         div[data-testid="stHorizontalBlock"] { flex-wrap: wrap; gap: 0.5rem; }
         div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
           flex: 1 1 100% !important;
@@ -124,4 +125,4 @@ pages = [
 ]
 st.navigation(pages).run()
 
-st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up")
+st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up · build 2026-07-01-cards")
