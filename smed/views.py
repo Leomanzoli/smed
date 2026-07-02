@@ -66,6 +66,15 @@ def _fmt_time(tv) -> str:
     return tv.strftime("%H:%M") if isinstance(tv, dtime) else ""
 
 
+def _ie_label(value) -> str:
+    v = (value or "").lower()
+    if v == "interna":
+        return t("analyze.interna")
+    if v == "externa":
+        return t("analyze.externa")
+    return t("common.none")
+
+
 # --------------------------------------------------------------------------- #
 # Home
 # --------------------------------------------------------------------------- #
@@ -103,6 +112,12 @@ def _task_form(project: dict, task: dict | None) -> None:
             step=TIME_STEP)
         fim = c2.time_input(
             t("tasks.fim"), value=_parse_time(task.get("fim")) if editing else None, step=TIME_STEP)
+        ie_opts = ["", "interna", "externa"]
+        cur_ie = _s(task.get("ie_inicial")) if editing else ""
+        ie_idx = ie_opts.index(cur_ie) if cur_ie in ie_opts else 0
+        ie_inicial = st.selectbox(
+            t("tasks.ie"), options=ie_opts, index=ie_idx,
+            format_func=_ie_label, help=t("tasks.ie_help"))
 
         if editing:
             b1, b2 = st.columns(2)
@@ -126,6 +141,7 @@ def _task_form(project: dict, task: dict | None) -> None:
                 "descricao": descricao.strip(),
                 "inicio": _fmt_time(inicio),
                 "fim": _fmt_time(fim),
+                "ie_inicial": ie_inicial,
             }
             if editing:
                 task.update(payload)
@@ -146,7 +162,7 @@ def _task_card(project: dict, task: dict) -> None:
             st.write(task["descricao"])
         ini = task.get("inicio") or "--:--"
         fim = task.get("fim") or "--:--"
-        st.caption(f"🕐 {ini} → {fim}  ·  ⏱️ {dur}")
+        st.caption(f"🕐 {ini} → {fim}  ·  ⏱️ {dur}  ·  I×E: {_ie_label(task.get('ie_inicial'))}")
         c1, c2 = st.columns(2)
         if c1.button("✏️ " + t("tasks.edit"), key=f"edit_{tid}", width="stretch"):
             st.session_state["edit_task_id"] = tid
@@ -242,19 +258,18 @@ def analyze() -> None:
     rows = []
     for task in tasks:
         a = analysis.get(task["id"], {})
-        r = compute_row(task, a)
+        # Seed the final I x E from the initial classification captured in the field.
+        ie_val = a.get("ie") or task.get("ie_inicial", "")
         rows.append({
             "id": task["id"],
-            "tarefa": task.get("tarefa", ""),
-            "descricao": task.get("descricao", ""),
-            "tempo": format_hms(r["diff"]),
-            "ie": a.get("ie", ""),
+            "tarefa": task.get("tarefa", "") or t("tasks.no_name"),
+            "ie_inicial": _ie_label(task.get("ie_inicial")),
+            "ie": ie_val,
             "e": bool(a.get("e")),
             "c": bool(a.get("c")),
             "r": bool(a.get("r")),
             "s": bool(a.get("s")),
             "ganho": int(a.get("ganho", 0) or 0),
-            "tempo_final": format_hms(r["tempo_final"]),
             "kaizen": a.get("kaizen", ""),
             "o_que_e": a.get("o_que_e", ""),
         })
@@ -264,12 +279,11 @@ def analyze() -> None:
         hide_index=True,
         width="stretch",
         key="analysis_editor",
-        disabled=["tarefa", "descricao", "tempo", "tempo_final"],
+        disabled=["tarefa", "ie_inicial"],
         column_config={
             "id": None,
-            "tarefa": st.column_config.TextColumn(t("tasks.tarefa")),
-            "descricao": st.column_config.TextColumn(t("tasks.descricao")),
-            "tempo": st.column_config.TextColumn(t("tasks.tempo"), width="small"),
+            "tarefa": st.column_config.TextColumn(t("tasks.tarefa"), width="medium"),
+            "ie_inicial": st.column_config.TextColumn(t("analyze.ie_inicial"), width="small"),
             "ie": st.column_config.SelectboxColumn(
                 t("analyze.ie"), options=["", "interna", "externa"], width="small"),
             "e": st.column_config.CheckboxColumn(t("ecrs.e"), width="small"),
@@ -277,7 +291,6 @@ def analyze() -> None:
             "r": st.column_config.CheckboxColumn(t("ecrs.r"), width="small"),
             "s": st.column_config.CheckboxColumn(t("ecrs.s"), width="small"),
             "ganho": st.column_config.NumberColumn(t("analyze.ganho"), min_value=0, step=1, width="small"),
-            "tempo_final": st.column_config.TextColumn(t("analyze.tempo_final"), width="small"),
             "kaizen": st.column_config.TextColumn(t("analyze.kaizen")),
             "o_que_e": st.column_config.TextColumn(t("analyze.o_que_e")),
         },
@@ -296,6 +309,19 @@ def analyze() -> None:
             "kaizen": _s(rec.get("kaizen")),
             "o_que_e": _s(rec.get("o_que_e")),
         }
+
+    # Computed values shown separately so the editor stays stable (reliable saving).
+    summary = []
+    for task in tasks:
+        r = compute_row(task, analysis.get(task["id"], {}))
+        summary.append({
+            t("tasks.tarefa"): task.get("tarefa", "") or t("tasks.no_name"),
+            t("tasks.tempo"): format_hms(r["diff"]),
+            t("analyze.ganho"): r["ganho"],
+            t("analyze.tempo_final"): format_hms(r["tempo_final"]),
+        })
+    st.markdown(f"**{t('analyze.computed')}**")
+    st.dataframe(pd.DataFrame(summary), hide_index=True, width="stretch")
 
     totals = compute_totals(project)
     st.subheader(t("analyze.totals"))
@@ -444,11 +470,11 @@ def _img(path: str):
 
 def about() -> None:
     st.header(t("about.title"))
-    c1, c2 = st.columns([1, 2])
+    c1, c2 = st.columns([1, 2], vertical_alignment="center")
     with c1:
         photo = _img(os.path.join(ASSETS, "leonardo.jpg"))
         if photo:
-            st.image(photo, width="stretch")
+            st.image(photo, width=200)
     with c2:
         st.subheader(t("about.dev"))
         st.write(f"**{t('about.role')}**")
@@ -456,10 +482,10 @@ def about() -> None:
 
     st.divider()
     st.subheader(t("about.partners"))
-    p1, p2 = st.columns(2)
+    p1, p2, _sp = st.columns([1, 1, 2], vertical_alignment="center")
     sodexo = _img(os.path.join(ASSETS, "logo sodexo.png"))
     vale = _img(os.path.join(ASSETS, "Logo vale.png"))
     if sodexo:
-        p1.image(sodexo, width=180)
+        p1.image(sodexo, width=130)
     if vale:
-        p2.image(vale, width=180)
+        p2.image(vale, width=130)

@@ -77,13 +77,12 @@ def build_bytes(project: dict) -> bytes:
     analysis = project.get("analysis", {})
     r = TASK_FIRST_ROW
     for task in project.get("tasks", []):
-        a = analysis.get(task.get("id"), {})
         ws.cell(row=r, column=1, value=task.get("tarefa", ""))
         ws.cell(row=r, column=2, value=task.get("task", ""))
         ws.cell(row=r, column=3, value=task.get("descricao", ""))
         ws.cell(row=r, column=4, value=task.get("inicio", ""))
         ws.cell(row=r, column=5, value=task.get("fim", ""))
-        ws.cell(row=r, column=6, value=(a.get("ie") or ""))
+        ws.cell(row=r, column=6, value=(task.get("ie_inicial") or ""))
         r += 1
 
     buf = io.BytesIO()
@@ -120,6 +119,9 @@ def parse_bytes(data: bytes) -> Tuple[dict, str]:
         if all(v in (None, "") for v in (tarefa, descricao, inicio, fim)):
             break
         tid = new_id()
+        ie = ws.cell(row=r, column=6).value
+        ie = "" if ie is None else str(ie).strip().lower()
+        ie = ie if ie in ("interna", "externa") else ""
         tasks.append({
             "id": tid,
             "tarefa": "" if tarefa is None else str(tarefa),
@@ -127,10 +129,9 @@ def parse_bytes(data: bytes) -> Tuple[dict, str]:
             "descricao": "" if descricao is None else str(descricao),
             "inicio": "" if inicio is None else str(inicio),
             "fim": "" if fim is None else str(fim),
+            "ie_inicial": ie,
         })
-        ie = ws.cell(row=r, column=6).value
-        ie = "" if ie is None else str(ie).strip().lower()
-        if ie in ("interna", "externa"):
+        if ie:
             analysis[tid] = {"ie": ie, "e": False, "c": False, "r": False,
                              "s": False, "ganho": 0, "kaizen": "", "o_que_e": ""}
         r += 1
