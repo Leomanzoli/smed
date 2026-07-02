@@ -38,7 +38,7 @@ with st.sidebar:
         data=project_io.to_json_bytes(project),
         file_name="SMED_backup.json",
         mime="application/json",
-        use_container_width=True,
+        width="stretch",
     )
     up = st.file_uploader(t("side.import_json"), type=["json"], key="json_up")
     if up is not None:
@@ -51,7 +51,7 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    if st.button(t("side.new"), use_container_width=True):
+    if st.button(t("side.new"), width="stretch"):
         st.session_state["confirm_new"] = True
     if st.session_state.get("confirm_new"):
         if st.button(f"⚠️ {t('side.new_confirm')}", type="primary", use_container_width=True):

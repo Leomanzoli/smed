@@ -2,16 +2,18 @@
 from __future__ import annotations
 
 import os
+from datetime import date, datetime, time as dtime, timedelta
 
 import pandas as pd
 import streamlit as st
 
 from . import excel_action, excel_field, excel_smed
-from .compute import compute_row, compute_totals, format_hms
+from .compute import compute_row, compute_totals, duration_minutes, format_hms
 from .i18n import get_lang, t
 from .state import get_project, new_id, prune_analysis
 
 ASSETS = "assets"
+TIME_STEP = timedelta(minutes=1)
 
 
 def _s(value) -> str:
@@ -20,6 +22,48 @@ def _s(value) -> str:
     if isinstance(value, float) and pd.isna(value):
         return ""
     return str(value)
+
+
+def _parse_date(value):
+    if not value:
+        return None
+    if isinstance(value, date):
+        return value
+    s = str(value).strip()
+    try:
+        return date.fromisoformat(s[:10])
+    except ValueError:
+        for fmt in ("%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(s, fmt).date()
+            except ValueError:
+                continue
+    return None
+
+
+def _parse_time(value):
+    if not value:
+        return None
+    if isinstance(value, dtime):
+        return value
+    s = str(value).strip().replace("h", ":")
+    parts = s.split(":")
+    try:
+        h = int(parts[0])
+        m = int(parts[1]) if len(parts) > 1 and parts[1] != "" else 0
+        if 0 <= h <= 23 and 0 <= m <= 59:
+            return dtime(h, m)
+    except (ValueError, IndexError):
+        return None
+    return None
+
+
+def _fmt_date(d) -> str:
+    return d.isoformat() if isinstance(d, date) else ""
+
+
+def _fmt_time(tv) -> str:
+    return tv.strftime("%H:%M") if isinstance(tv, dtime) else ""
 
 
 # --------------------------------------------------------------------------- #
@@ -42,26 +86,97 @@ def home() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Collect (Step 1 + Step 2)
+# Collect (Step 1 + Step 2) — mobile-first
 # --------------------------------------------------------------------------- #
+def _task_form(project: dict, task: dict | None) -> None:
+    """Render an add/edit task form. task=None means 'add new'."""
+    editing = task is not None
+    form_key = f"task_form_{task['id']}" if editing else "task_form_new"
+    with st.form(form_key, clear_on_submit=not editing, border=not editing):
+        tarefa = st.text_input(t("tasks.tarefa"), value=_s(task.get("tarefa")) if editing else "")
+        numero = st.text_input(t("tasks.task"), value=_s(task.get("task")) if editing else "")
+        descricao = st.text_area(
+            t("tasks.descricao"), value=_s(task.get("descricao")) if editing else "", height=80)
+        c1, c2 = st.columns(2)
+        inicio = c1.time_input(
+            t("tasks.inicio"), value=_parse_time(task.get("inicio")) if editing else None,
+            step=TIME_STEP)
+        fim = c2.time_input(
+            t("tasks.fim"), value=_parse_time(task.get("fim")) if editing else None, step=TIME_STEP)
+
+        if editing:
+            b1, b2 = st.columns(2)
+            save = b1.form_submit_button(t("common.save"), type="primary", width="stretch")
+            cancel = b2.form_submit_button(t("common.cancel"), width="stretch")
+        else:
+            save = st.form_submit_button(
+                "➕ " + t("tasks.add_title"), type="primary", width="stretch")
+            cancel = False
+
+        if cancel:
+            st.session_state.pop("edit_task_id", None)
+            st.rerun()
+        if save:
+            if not tarefa.strip() and not descricao.strip():
+                st.warning(t("tasks.need_name"))
+                return
+            payload = {
+                "tarefa": tarefa.strip(),
+                "task": numero.strip(),
+                "descricao": descricao.strip(),
+                "inicio": _fmt_time(inicio),
+                "fim": _fmt_time(fim),
+            }
+            if editing:
+                task.update(payload)
+                st.session_state.pop("edit_task_id", None)
+            else:
+                project.setdefault("tasks", []).append({"id": new_id(), **payload})
+            st.rerun()
+
+
+def _task_card(project: dict, task: dict) -> None:
+    tid = task["id"]
+    with st.container(border=True):
+        dur = format_hms(duration_minutes(task.get("inicio"), task.get("fim")))
+        nome = task.get("tarefa") or t("tasks.no_name")
+        num = f" · #{task['task']}" if task.get("task") else ""
+        st.markdown(f"**{nome}**{num}")
+        if task.get("descricao"):
+            st.write(task["descricao"])
+        ini = task.get("inicio") or "--:--"
+        fim = task.get("fim") or "--:--"
+        st.caption(f"🕐 {ini} → {fim}  ·  ⏱️ {dur}")
+        c1, c2 = st.columns(2)
+        if c1.button("✏️ " + t("tasks.edit"), key=f"edit_{tid}", width="stretch"):
+            st.session_state["edit_task_id"] = tid
+            st.rerun()
+        if c2.button("🗑️ " + t("tasks.delete"), key=f"del_{tid}", width="stretch"):
+            project["tasks"] = [x for x in project.get("tasks", []) if x["id"] != tid]
+            prune_analysis(project)
+            st.session_state.pop("edit_task_id", None)
+            st.rerun()
+
+
 def collect() -> None:
     project = get_project()
     basic = project.setdefault("basic", {})
 
     st.header(t("basic.title"))
-    c1, c2 = st.columns(2)
-    with c1:
-        basic["atividade"] = st.text_input(t("basic.atividade"), value=_s(basic.get("atividade")))
-        basic["aplicadores"] = st.text_input(t("basic.aplicadores"), value=_s(basic.get("aplicadores")))
-        basic["data_analise"] = st.text_input(t("basic.data_analise"), value=_s(basic.get("data_analise")),
-                                               placeholder="AAAA-MM-DD")
-        basic["area"] = st.text_input(t("basic.area"), value=_s(basic.get("area")))
-    with c2:
-        basic["gerencia"] = st.text_input(t("basic.gerencia"), value=_s(basic.get("gerencia")))
-        basic["supervisao"] = st.text_input(t("basic.supervisao"), value=_s(basic.get("supervisao")))
-        basic["revisao"] = st.text_input(t("basic.revisao"), value=_s(basic.get("revisao")))
-        basic["data_revisao"] = st.text_input(t("basic.data_revisao"), value=_s(basic.get("data_revisao")),
-                                              placeholder="AAAA-MM-DD")
+    basic["atividade"] = st.text_input(t("basic.atividade"), value=_s(basic.get("atividade")))
+    basic["aplicadores"] = st.text_input(t("basic.aplicadores"), value=_s(basic.get("aplicadores")))
+    d1 = st.date_input(
+        t("basic.data_analise"), value=_parse_date(basic.get("data_analise")),
+        format="DD/MM/YYYY")
+    basic["data_analise"] = _fmt_date(d1)
+    basic["area"] = st.text_input(t("basic.area"), value=_s(basic.get("area")))
+    basic["gerencia"] = st.text_input(t("basic.gerencia"), value=_s(basic.get("gerencia")))
+    basic["supervisao"] = st.text_input(t("basic.supervisao"), value=_s(basic.get("supervisao")))
+    basic["revisao"] = st.text_input(t("basic.revisao"), value=_s(basic.get("revisao")))
+    d2 = st.date_input(
+        t("basic.data_revisao"), value=_parse_date(basic.get("data_revisao")),
+        format="DD/MM/YYYY")
+    basic["data_revisao"] = _fmt_date(d2)
     project["section_label"] = st.text_input(
         t("basic.section_label"), value=_s(project.get("section_label")), help=t("basic.section_help"))
 
@@ -70,58 +185,33 @@ def collect() -> None:
     st.caption(t("tasks.help"))
 
     tasks = project.setdefault("tasks", [])
-    df = pd.DataFrame(tasks, columns=["id", "tarefa", "task", "descricao", "inicio", "fim"])
-    edited = st.data_editor(
-        df,
-        num_rows="dynamic",
-        hide_index=True,
-        use_container_width=True,
-        key="tasks_editor",
-        column_config={
-            "id": None,
-            "tarefa": st.column_config.TextColumn(t("tasks.tarefa"), width="medium"),
-            "task": st.column_config.TextColumn(t("tasks.task"), width="small"),
-            "descricao": st.column_config.TextColumn(t("tasks.descricao"), width="large"),
-            "inicio": st.column_config.TextColumn(t("tasks.inicio"), width="small"),
-            "fim": st.column_config.TextColumn(t("tasks.fim"), width="small"),
-        },
-    )
-    new_tasks = []
-    for rec in edited.to_dict("records"):
-        tid = _s(rec.get("id")) or new_id()
-        new_tasks.append({
-            "id": tid,
-            "tarefa": _s(rec.get("tarefa")),
-            "task": _s(rec.get("task")),
-            "descricao": _s(rec.get("descricao")),
-            "inicio": _s(rec.get("inicio")),
-            "fim": _s(rec.get("fim")),
-        })
-    project["tasks"] = new_tasks
-    prune_analysis(project)
+    edit_id = st.session_state.get("edit_task_id")
 
-    if new_tasks:
-        preview = pd.DataFrame([
-            {t("tasks.tarefa"): tk["tarefa"], t("tasks.tempo"): format_hms(
-                compute_row(tk, {})["diff"])}
-            for tk in new_tasks
-        ])
-        st.dataframe(preview, hide_index=True, use_container_width=True)
+    # Add form (hidden while editing another task, to keep focus on one action)
+    if not edit_id:
+        _task_form(project, None)
+
+    if tasks:
+        st.markdown(f"**{t('tasks.list_title')}** ({len(tasks)})")
+        for task in tasks:
+            if edit_id == task["id"]:
+                _task_form(project, task)
+            else:
+                _task_card(project, task)
     else:
         st.info(t("tasks.empty"))
 
     st.divider()
-    c1, c2 = st.columns(2)
-    with c1:
-        st.download_button(
-            t("tasks.export_field"),
-            data=excel_field.build_bytes(project),
-            file_name="SMED_coleta.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-        )
-    with c2:
-        up = st.file_uploader(t("tasks.import_field"), type=["xlsx"], key="field_up")
+    st.download_button(
+        "⬇️ " + t("tasks.export_field"),
+        data=excel_field.build_bytes(project),
+        file_name="SMED_coleta.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        width="stretch",
+    )
+    with st.expander(t("tasks.import_field")):
+        up = st.file_uploader(t("tasks.import_field"), type=["xlsx"], key="field_up",
+                              label_visibility="collapsed")
         if up is not None:
             partial, err = excel_field.parse_bytes(up.getvalue())
             if err:
@@ -172,7 +262,7 @@ def analyze() -> None:
     edited = st.data_editor(
         df,
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         key="analysis_editor",
         disabled=["tarefa", "descricao", "tempo", "tempo_final"],
         column_config={
@@ -219,7 +309,7 @@ def analyze() -> None:
         data=excel_smed.build_bytes(project),
         file_name="SMED_formulario.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -238,7 +328,7 @@ def action_plan() -> None:
         df,
         num_rows="dynamic",
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         key="action_editor",
         column_config={
             "o_que": st.column_config.TextColumn(t("action.o_que")),
@@ -261,7 +351,7 @@ def action_plan() -> None:
         data=excel_action.build_bytes(project),
         file_name="SMED_plano_5W2H.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -358,7 +448,7 @@ def about() -> None:
     with c1:
         photo = _img(os.path.join(ASSETS, "leonardo.jpg"))
         if photo:
-            st.image(photo, use_container_width=True)
+            st.image(photo, width="stretch")
     with c2:
         st.subheader(t("about.dev"))
         st.write(f"**{t('about.role')}**")
