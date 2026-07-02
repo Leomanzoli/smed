@@ -119,7 +119,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "tasks.inicio": {"pt": "Início", "en": "Start"},
     "tasks.fim": {"pt": "Fim", "en": "End"},
     "tasks.tempo": {"pt": "Tempo", "en": "Time"},
-    "tasks.empty": {"pt": "Nenhuma tarefa ainda. Adicione linhas na tabela acima.", "en": "No tasks yet. Add rows in the table above."},
+    "tasks.empty": {"pt": "Nenhuma tarefa ainda. Adicione acima.", "en": "No tasks yet. Add above."},
     "tasks.export_field": {"pt": "Exportar Excel de campo", "en": "Export field Excel"},
     "tasks.import_field": {"pt": "Importar Excel de campo", "en": "Import field Excel"},
     "tasks.import_ok": {"pt": "Excel de campo importado.", "en": "Field Excel imported."},
@@ -152,7 +152,12 @@ STRINGS: dict[str, dict[str, str]] = {
 
     # ---- action plan ----
     "action.title": {"pt": "Plano de ação 5W2H", "en": "5W2H Action plan"},
-    "action.help": {"pt": "Uma linha por ação. Exporte o plano em Excel.", "en": "One row per action. Export the plan to Excel."},
+    "action.help": {"pt": "Adicione uma ação por vez. Exporte o plano em Excel.", "en": "Add one action at a time. Export the plan to Excel."},
+    "action.add_title": {"pt": "Adicionar ação", "en": "Add action"},
+    "action.list_title": {"pt": "Ações", "en": "Actions"},
+    "action.empty": {"pt": "Nenhuma ação ainda.", "en": "No actions yet."},
+    "action.need": {"pt": "Preencha ao menos 'O quê?'.", "en": "Fill at least 'What?'."},
+    "action.no_o_que": {"pt": "(sem descrição)", "en": "(no description)"},
     "action.o_que": {"pt": "O quê?", "en": "What?"},
     "action.por_que": {"pt": "Por quê?", "en": "Why?"},
     "action.onde": {"pt": "Onde?", "en": "Where?"},

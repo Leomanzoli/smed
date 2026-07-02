@@ -255,73 +255,46 @@ def analyze() -> None:
         return
 
     analysis = project.setdefault("analysis", {})
-    rows = []
+    ie_opts = ["", "interna", "externa"]
     for task in tasks:
-        a = analysis.get(task["id"], {})
-        # Seed the final I x E from the initial classification captured in the field.
-        ie_val = a.get("ie") or task.get("ie_inicial", "")
-        rows.append({
-            "id": task["id"],
-            "tarefa": task.get("tarefa", "") or t("tasks.no_name"),
-            "ie_inicial": _ie_label(task.get("ie_inicial")),
-            "ie": ie_val,
-            "e": bool(a.get("e")),
-            "c": bool(a.get("c")),
-            "r": bool(a.get("r")),
-            "s": bool(a.get("s")),
-            "ganho": int(a.get("ganho", 0) or 0),
-            "kaizen": a.get("kaizen", ""),
-            "o_que_e": a.get("o_que_e", ""),
-        })
-    df = pd.DataFrame(rows)
-    edited = st.data_editor(
-        df,
-        hide_index=True,
-        width="stretch",
-        key="analysis_editor",
-        disabled=["tarefa", "ie_inicial"],
-        column_config={
-            "id": None,
-            "tarefa": st.column_config.TextColumn(t("tasks.tarefa"), width="medium"),
-            "ie_inicial": st.column_config.TextColumn(t("analyze.ie_inicial"), width="small"),
-            "ie": st.column_config.SelectboxColumn(
-                t("analyze.ie"), options=["", "interna", "externa"], width="small"),
-            "e": st.column_config.CheckboxColumn(t("ecrs.e"), width="small"),
-            "c": st.column_config.CheckboxColumn(t("ecrs.c"), width="small"),
-            "r": st.column_config.CheckboxColumn(t("ecrs.r"), width="small"),
-            "s": st.column_config.CheckboxColumn(t("ecrs.s"), width="small"),
-            "ganho": st.column_config.NumberColumn(t("analyze.ganho"), min_value=0, step=1, width="small"),
-            "kaizen": st.column_config.TextColumn(t("analyze.kaizen")),
-            "o_que_e": st.column_config.TextColumn(t("analyze.o_que_e")),
-        },
-    )
-    for rec in edited.to_dict("records"):
-        tid = _s(rec.get("id"))
-        if not tid:
-            continue
-        analysis[tid] = {
-            "ie": _s(rec.get("ie")),
-            "e": bool(rec.get("e")),
-            "c": bool(rec.get("c")),
-            "r": bool(rec.get("r")),
-            "s": bool(rec.get("s")),
-            "ganho": int(rec.get("ganho") or 0),
-            "kaizen": _s(rec.get("kaizen")),
-            "o_que_e": _s(rec.get("o_que_e")),
-        }
-
-    # Computed values shown separately so the editor stays stable (reliable saving).
-    summary = []
-    for task in tasks:
-        r = compute_row(task, analysis.get(task["id"], {}))
-        summary.append({
-            t("tasks.tarefa"): task.get("tarefa", "") or t("tasks.no_name"),
-            t("tasks.tempo"): format_hms(r["diff"]),
-            t("analyze.ganho"): r["ganho"],
-            t("analyze.tempo_final"): format_hms(r["tempo_final"]),
-        })
-    st.markdown(f"**{t('analyze.computed')}**")
-    st.dataframe(pd.DataFrame(summary), hide_index=True, width="stretch")
+        tid = task["id"]
+        a = analysis.get(tid, {})
+        nome = task.get("tarefa", "") or t("tasks.no_name")
+        with st.container(border=True):
+            num = f" · #{task['task']}" if task.get("task") else ""
+            st.markdown(f"**{nome}**{num}")
+            dur = format_hms(duration_minutes(task.get("inicio"), task.get("fim")))
+            st.caption(
+                f"🕐 {task.get('inicio') or '--:--'} → {task.get('fim') or '--:--'}"
+                f"  ·  ⏱️ {dur}  ·  {t('analyze.ie_inicial')}: {_ie_label(task.get('ie_inicial'))}"
+            )
+            # Seed the final I x E from the initial classification captured in the field.
+            seed_ie = a.get("ie") or task.get("ie_inicial", "")
+            seed_idx = ie_opts.index(seed_ie) if seed_ie in ie_opts else 0
+            ie = st.selectbox(
+                t("analyze.ie"), options=ie_opts, index=seed_idx,
+                format_func=_ie_label, key=f"an_ie_{tid}")
+            c1, c2, c3, c4 = st.columns(4)
+            e = c1.checkbox(t("ecrs.e"), value=bool(a.get("e")), key=f"an_e_{tid}")
+            c = c2.checkbox(t("ecrs.c"), value=bool(a.get("c")), key=f"an_c_{tid}")
+            r = c3.checkbox(t("ecrs.r"), value=bool(a.get("r")), key=f"an_r_{tid}")
+            s = c4.checkbox(t("ecrs.s"), value=bool(a.get("s")), key=f"an_s_{tid}")
+            ganho = st.number_input(
+                t("analyze.ganho"), min_value=0, step=1,
+                value=int(a.get("ganho", 0) or 0), key=f"an_ganho_{tid}")
+            kaizen = st.text_input(
+                t("analyze.kaizen"), value=_s(a.get("kaizen")), key=f"an_kaizen_{tid}")
+            o_que_e = st.text_input(
+                t("analyze.o_que_e"), value=_s(a.get("o_que_e")), key=f"an_oque_{tid}")
+            analysis[tid] = {
+                "ie": ie, "e": e, "c": c, "r": r, "s": s,
+                "ganho": int(ganho or 0), "kaizen": kaizen, "o_que_e": o_que_e,
+            }
+            comp = compute_row(task, analysis[tid])
+            st.caption(
+                f"{t('tasks.tempo')}: {format_hms(comp['diff'])}"
+                f"  ·  {t('analyze.tempo_final')}: {format_hms(comp['tempo_final'])}"
+            )
 
     totals = compute_totals(project)
     st.subheader(t("analyze.totals"))
@@ -342,36 +315,87 @@ def analyze() -> None:
 # --------------------------------------------------------------------------- #
 # 5W2H action plan
 # --------------------------------------------------------------------------- #
+_ACTION_FIELDS = [
+    "o_que", "por_que", "onde", "quando", "quem", "como", "quanto", "matricula", "email"]
+
+
+def _action_form(project: dict, item: dict | None) -> None:
+    editing = item is not None
+    form_key = f"action_form_{item['id']}" if editing else "action_form_new"
+    with st.form(form_key, clear_on_submit=not editing, border=not editing):
+        vals: dict[str, str] = {}
+        for key in _ACTION_FIELDS:
+            vals[key] = st.text_input(
+                t(f"action.{key}"), value=_s(item.get(key)) if editing else "")
+        if editing:
+            b1, b2 = st.columns(2)
+            save = b1.form_submit_button(t("common.save"), type="primary", width="stretch")
+            cancel = b2.form_submit_button(t("common.cancel"), width="stretch")
+        else:
+            save = st.form_submit_button(
+                "➕ " + t("action.add_title"), type="primary", width="stretch")
+            cancel = False
+
+        if cancel:
+            st.session_state.pop("edit_action_id", None)
+            st.rerun()
+        if save:
+            if not vals["o_que"].strip():
+                st.warning(t("action.need"))
+                return
+            payload = {k: v.strip() for k, v in vals.items()}
+            if editing:
+                item.update(payload)
+                st.session_state.pop("edit_action_id", None)
+            else:
+                project.setdefault("action_plan", []).append({"id": new_id(), **payload})
+            st.rerun()
+
+
+def _action_card(project: dict, item: dict) -> None:
+    aid = item["id"]
+    with st.container(border=True):
+        st.markdown(f"**{item.get('o_que') or t('action.no_o_que')}**")
+        rows = [(t(f"action.{k}"), item.get(k)) for k in _ACTION_FIELDS[1:]]
+        lines = [f"**{lbl}:** {val}" for lbl, val in rows if val]
+        if lines:
+            st.markdown("  \n".join(lines))
+        c1, c2 = st.columns(2)
+        if c1.button("✏️ " + t("tasks.edit"), key=f"edit_a_{aid}", width="stretch"):
+            st.session_state["edit_action_id"] = aid
+            st.rerun()
+        if c2.button("🗑️ " + t("tasks.delete"), key=f"del_a_{aid}", width="stretch"):
+            project["action_plan"] = [
+                x for x in project.get("action_plan", []) if x.get("id") != aid]
+            st.session_state.pop("edit_action_id", None)
+            st.rerun()
+
+
 def action_plan() -> None:
     project = get_project()
     st.header(t("action.title"))
     st.caption(t("action.help"))
 
     items = project.setdefault("action_plan", [])
-    cols = ["o_que", "por_que", "onde", "quando", "quem", "como", "quanto", "matricula", "email"]
-    df = pd.DataFrame(items, columns=cols)
-    edited = st.data_editor(
-        df,
-        num_rows="dynamic",
-        hide_index=True,
-        width="stretch",
-        key="action_editor",
-        column_config={
-            "o_que": st.column_config.TextColumn(t("action.o_que")),
-            "por_que": st.column_config.TextColumn(t("action.por_que")),
-            "onde": st.column_config.TextColumn(t("action.onde")),
-            "quando": st.column_config.TextColumn(t("action.quando")),
-            "quem": st.column_config.TextColumn(t("action.quem")),
-            "como": st.column_config.TextColumn(t("action.como")),
-            "quanto": st.column_config.TextColumn(t("action.quanto")),
-            "matricula": st.column_config.TextColumn(t("action.matricula")),
-            "email": st.column_config.TextColumn(t("action.email")),
-        },
-    )
-    project["action_plan"] = [
-        {k: _s(rec.get(k)) for k in cols} for rec in edited.to_dict("records")
-    ]
+    for it in items:
+        if not it.get("id"):
+            it["id"] = new_id()
 
+    edit_id = st.session_state.get("edit_action_id")
+    if not edit_id:
+        _action_form(project, None)
+
+    if items:
+        st.markdown(f"**{t('action.list_title')}** ({len(items)})")
+        for it in items:
+            if edit_id == it["id"]:
+                _action_form(project, it)
+            else:
+                _action_card(project, it)
+    else:
+        st.info(t("action.empty"))
+
+    st.divider()
     st.download_button(
         t("action.export"),
         data=excel_action.build_bytes(project),
