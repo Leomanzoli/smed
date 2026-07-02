@@ -125,4 +125,4 @@ pages = [
 ]
 st.navigation(pages).run()
 
-st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up · build 2026-07-01-cards")
+st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up · build 2026-07-01-b")

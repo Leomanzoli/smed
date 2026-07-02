@@ -27,6 +27,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "common.cancel": {"pt": "Cancelar", "en": "Cancel"},
     "common.minutes": {"pt": "min", "en": "min"},
     "common.none": {"pt": "—", "en": "—"},
+    "common.initial": {"pt": "Inicial", "en": "Initial"},
+    "common.final": {"pt": "Final", "en": "Final"},
 
     # ---- sidebar project ----
     "side.project": {"pt": "Projeto", "en": "Project"},
@@ -145,10 +147,30 @@ STRINGS: dict[str, dict[str, str]] = {
     "analyze.total_final": {"pt": "Tempo final total", "en": "Total final time"},
     "analyze.reduction": {"pt": "Redução", "en": "Reduction"},
     "analyze.export_smed": {"pt": "Exportar formulário SMED (Excel)", "en": "Export SMED form (Excel)"},
+    "analyze.ie_toggle": {"pt": "Externa? (desligado = Interna)", "en": "External? (off = Internal)"},
+    "analyze.ecrs": {"pt": "ECRS (escolha uma)", "en": "ECRS (choose one)"},
+    "analyze.total_gain": {"pt": "Ganho total", "en": "Total gain"},
+    "analyze.ie_split": {"pt": "Interno × Externo (tempo)", "en": "Internal × External (time)"},
+    "analyze.internal": {"pt": "Interno", "en": "Internal"},
+    "analyze.external": {"pt": "Externo", "en": "External"},
+    "analyze.tempo_i": {"pt": "Tempo interno", "en": "Internal time"},
+    "analyze.tempo_e": {"pt": "Tempo externo", "en": "External time"},
+    "analyze.converted": {"pt": "Convertido Interno→Externo", "en": "Converted Internal→External"},
+    "analyze.converted_help": {
+        "pt": "Percentual de tarefas internas iniciais que passaram a externas.",
+        "en": "Share of initially internal tasks that became external.",
+    },
+    "analyze.changed": {"pt": "Tarefas alteradas", "en": "Changed tasks"},
+    "analyze.preview": {"pt": "Prévia do formulário SMED", "en": "SMED form preview"},
+    "analyze.preview_help": {
+        "pt": "Visualização (somente leitura) dos dados que serão gerados no Excel.",
+        "en": "Read-only preview of the data that will be generated in Excel.",
+    },
     "ecrs.e": {"pt": "Eliminar (E)", "en": "Eliminate (E)"},
     "ecrs.c": {"pt": "Combinar (C)", "en": "Combine (C)"},
     "ecrs.r": {"pt": "Reduzir (R)", "en": "Reduce (R)"},
     "ecrs.s": {"pt": "Simplificar (S)", "en": "Simplify (S)"},
+    "ecrs.none": {"pt": "Nenhum", "en": "None"},
 
     # ---- action plan ----
     "action.title": {"pt": "Plano de ação 5W2H", "en": "5W2H Action plan"},
@@ -168,6 +190,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "action.matricula": {"pt": "Matrícula", "en": "ID"},
     "action.email": {"pt": "E-mail", "en": "E-mail"},
     "action.export": {"pt": "Exportar plano 5W2H (Excel)", "en": "Export 5W2H plan (Excel)"},
+    "action.preview": {"pt": "Prévia do plano (somente leitura)", "en": "Plan preview (read-only)"},
 
     # ---- help ----
     "help.title": {"pt": "Como usar", "en": "How to use"},

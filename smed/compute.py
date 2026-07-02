@@ -86,10 +86,18 @@ def compute_row(task: dict, analysis: dict) -> dict:
 
 
 def compute_totals(project: dict) -> dict:
-    """Aggregate totals across all tasks. Returns minute sums and reduction ratio."""
+    """Aggregate totals across all tasks.
+
+    Returns minute sums, the overall reduction ratio, and a detailed initial vs
+    final Internal/External breakdown plus conversion metrics.
+    """
     total_diff = total_i = total_e = total_ganho = total_final = 0
+    init_i = init_e = init_none = 0          # initial time split (by ie_inicial)
+    final_i = final_e = 0                     # final time split (by analysis ie)
+    init_i_count = changed_count = conv_i_to_e = 0
     analysis_map = project.get("analysis", {})
-    for task in project.get("tasks", []):
+    tasks = project.get("tasks", [])
+    for task in tasks:
         a = analysis_map.get(task.get("id"), {})
         r = compute_row(task, a)
         total_diff += r["diff"]
@@ -97,7 +105,27 @@ def compute_totals(project: dict) -> dict:
         total_e += r["tempo_e"]
         total_ganho += r["ganho"]
         total_final += r["tempo_final"]
+
+        ie_init = (task.get("ie_inicial") or "").lower()
+        ie_final = (a.get("ie") or "").lower()
+        if ie_init == "interna":
+            init_i += r["diff"]
+            init_i_count += 1
+        elif ie_init == "externa":
+            init_e += r["diff"]
+        else:
+            init_none += r["diff"]
+        if ie_final == "interna":
+            final_i += r["tempo_final"]
+        elif ie_final == "externa":
+            final_e += r["tempo_final"]
+        if ie_init and ie_final and ie_init != ie_final:
+            changed_count += 1
+            if ie_init == "interna" and ie_final == "externa":
+                conv_i_to_e += 1
+
     reduction = (1 - (total_final / total_diff)) if total_diff > 0 else 0.0
+    conversion_rate = (conv_i_to_e / init_i_count) if init_i_count > 0 else 0.0
     return {
         "diff": total_diff,
         "tempo_i": total_i,
@@ -105,4 +133,14 @@ def compute_totals(project: dict) -> dict:
         "ganho": total_ganho,
         "tempo_final": total_final,
         "reduction": reduction,
+        "init_i": init_i,
+        "init_e": init_e,
+        "init_none": init_none,
+        "final_i": final_i,
+        "final_e": final_e,
+        "init_i_count": init_i_count,
+        "changed_count": changed_count,
+        "conv_i_to_e": conv_i_to_e,
+        "conversion_rate": conversion_rate,
+        "task_count": len(tasks),
     }

@@ -260,7 +260,11 @@ def analyze() -> None:
         return
 
     analysis = project.setdefault("analysis", {})
-    ie_opts = ["", "interna", "externa"]
+    ecrs_opts = ["", "e", "c", "r", "s"]
+    ecrs_labels = {
+        "": t("ecrs.none"), "e": t("ecrs.e"), "c": t("ecrs.c"),
+        "r": t("ecrs.r"), "s": t("ecrs.s"),
+    }
     for task in tasks:
         tid = task["id"]
         a = analysis.get(tid, {})
@@ -273,17 +277,19 @@ def analyze() -> None:
                 f"🕐 {task.get('inicio') or '--:--'} → {task.get('fim') or '--:--'}"
                 f"  ·  ⏱️ {dur}  ·  {t('analyze.ie_inicial')}: {_ie_label(task.get('ie_inicial'))}"
             )
-            # Seed the final I x E from the initial classification captured in the field.
-            seed_ie = a.get("ie") or task.get("ie_inicial", "")
-            seed_idx = ie_opts.index(seed_ie) if seed_ie in ie_opts else 0
-            ie = st.selectbox(
-                t("analyze.ie"), options=ie_opts, index=seed_idx,
-                format_func=_ie_label, key=f"an_ie_{tid}")
-            c1, c2, c3, c4 = st.columns(4)
-            e = c1.checkbox(t("ecrs.e"), value=bool(a.get("e")), key=f"an_e_{tid}")
-            c = c2.checkbox(t("ecrs.c"), value=bool(a.get("c")), key=f"an_c_{tid}")
-            r = c3.checkbox(t("ecrs.r"), value=bool(a.get("r")), key=f"an_r_{tid}")
-            s = c4.checkbox(t("ecrs.s"), value=bool(a.get("s")), key=f"an_s_{tid}")
+            # I x E (final) as a simple switch. Seed from initial classification.
+            seed_ie = a.get("ie") or task.get("ie_inicial") or "interna"
+            is_ext = st.toggle(
+                t("analyze.ie_toggle"), value=(seed_ie == "externa"), key=f"an_ie_{tid}")
+            ie = "externa" if is_ext else "interna"
+            st.caption(f"{t('analyze.ie')}: **{_ie_label(ie)}**")
+            # ECRS: choose a single option (E, C, R or S).
+            cur_ecrs = next((k for k in ("e", "c", "r", "s") if a.get(k)), "")
+            sel = st.radio(
+                t("analyze.ecrs"), options=ecrs_opts,
+                index=ecrs_opts.index(cur_ecrs),
+                format_func=lambda k: ecrs_labels[k], horizontal=True, key=f"an_ecrs_{tid}")
+            e, c, r, s = sel == "e", sel == "c", sel == "r", sel == "s"
             ganho = st.number_input(
                 t("analyze.ganho"), min_value=0, step=1,
                 value=int(a.get("ganho", 0) or 0), key=f"an_ganho_{tid}")
@@ -305,8 +311,50 @@ def analyze() -> None:
     st.subheader(t("analyze.totals"))
     m1, m2, m3 = st.columns(3)
     m1.metric(t("analyze.total_time"), format_hms(totals["diff"]))
-    m2.metric(t("analyze.total_final"), format_hms(totals["tempo_final"]))
+    m2.metric(t("analyze.total_gain"), format_hms(totals["ganho"]))
     m3.metric(t("analyze.reduction"), f"{totals['reduction'] * 100:.0f}%")
+
+    st.markdown(f"**{t('analyze.ie_split')}**")
+    split_df = pd.DataFrame(
+        {
+            "": [t("analyze.internal"), t("analyze.external")],
+            t("common.initial"): [format_hms(totals["init_i"]), format_hms(totals["init_e"])],
+            t("common.final"): [format_hms(totals["final_i"]), format_hms(totals["final_e"])],
+        }
+    )
+    st.dataframe(split_df, hide_index=True, width="stretch")
+    c4, c5 = st.columns(2)
+    c4.metric(
+        t("analyze.converted"), f"{totals['conversion_rate'] * 100:.0f}%",
+        help=t("analyze.converted_help"))
+    c5.metric(t("analyze.changed"), f"{totals['changed_count']}/{totals['task_count']}")
+
+    # Read-only preview of the SMED form that will be generated.
+    st.markdown(f"**{t('analyze.preview')}**")
+    st.caption(t("analyze.preview_help"))
+    prev_rows = []
+    for task in tasks:
+        a = analysis.get(task["id"], {})
+        cr = compute_row(task, a)
+        ie = (a.get("ie") or "").lower()
+        prev_rows.append({
+            t("tasks.tarefa"): task.get("tarefa", "") or t("tasks.no_name"),
+            t("tasks.task"): task.get("task", ""),
+            t("tasks.inicio"): task.get("inicio", ""),
+            t("tasks.fim"): task.get("fim", ""),
+            t("tasks.tempo"): format_hms(cr["diff"]),
+            t("analyze.interna"): "X" if ie == "interna" else "",
+            t("analyze.externa"): "X" if ie == "externa" else "",
+            t("analyze.tempo_i"): format_hms(cr["tempo_i"]),
+            t("analyze.tempo_e"): format_hms(cr["tempo_e"]),
+            "E": "X" if a.get("e") else "",
+            "C": "X" if a.get("c") else "",
+            "R": "X" if a.get("r") else "",
+            "S": "X" if a.get("s") else "",
+            t("analyze.ganho"): cr["ganho"],
+            t("analyze.tempo_final"): format_hms(cr["tempo_final"]),
+        })
+    st.dataframe(pd.DataFrame(prev_rows), hide_index=True, width="stretch")
 
     st.download_button(
         t("analyze.export_smed"),
@@ -327,11 +375,25 @@ _ACTION_FIELDS = [
 def _action_form(project: dict, item: dict | None) -> None:
     editing = item is not None
     form_key = f"action_form_{item['id']}" if editing else "action_form_new"
+
+    def val(k):
+        return _s(item.get(k)) if editing else ""
+
     with st.form(form_key, clear_on_submit=not editing, border=not editing):
         vals: dict[str, str] = {}
-        for key in _ACTION_FIELDS:
-            vals[key] = st.text_input(
-                t(f"action.{key}"), value=_s(item.get(key)) if editing else "")
+        vals["o_que"] = st.text_area(t("action.o_que"), value=val("o_que"), height=70)
+        vals["por_que"] = st.text_area(t("action.por_que"), value=val("por_que"), height=70)
+        c1, c2 = st.columns(2)
+        vals["onde"] = c1.text_input(t("action.onde"), value=val("onde"))
+        vals["quando"] = c2.text_input(t("action.quando"), value=val("quando"))
+        c3, c4 = st.columns(2)
+        vals["quem"] = c3.text_input(t("action.quem"), value=val("quem"))
+        vals["quanto"] = c4.text_input(t("action.quanto"), value=val("quanto"))
+        vals["como"] = st.text_area(t("action.como"), value=val("como"), height=70)
+        c5, c6 = st.columns(2)
+        vals["matricula"] = c5.text_input(t("action.matricula"), value=val("matricula"))
+        vals["email"] = c6.text_input(t("action.email"), value=val("email"))
+
         if editing:
             b1, b2 = st.columns(2)
             save = b1.form_submit_button(t("common.save"), type="primary", width="stretch")
@@ -399,6 +461,13 @@ def action_plan() -> None:
                 _action_card(project, it)
     else:
         st.info(t("action.empty"))
+
+    if items:
+        st.markdown(f"**{t('action.preview')}**")
+        prev = pd.DataFrame(
+            [{t(f"action.{k}"): _s(it.get(k)) for k in _ACTION_FIELDS} for it in items]
+        )
+        st.dataframe(prev, hide_index=True, width="stretch")
 
     st.divider()
     st.download_button(

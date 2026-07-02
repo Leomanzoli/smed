@@ -11,9 +11,38 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.worksheet.datavalidation import DataValidation
 
 from .compute import compute_row
+from .i18n import get_lang
 
 TEAL = "FF007E7A"
 LIGHT = "FFE6F2F1"
+
+# Localized labels for the SMED form (falls back to PT).
+_L = {
+    "pt": {
+        "title": "SMED - Single Minute Exchange of Die",
+        "atividade": "Atividade: {}", "data_analise": "Data análise:",
+        "elaborador": "Elaborador:", "revisao": "Revisão:", "data_revisao": "Data da revisão:",
+        "tarefa": "Tarefa", "task": "Task", "descricao": "Descrição",
+        "inicio": "Início", "fim": "Fim", "tempo": "Tempo",
+        "ie": "Análise I x E", "interna": "Interna", "externa": "Externa",
+        "interno": "Interno", "externo": "Externo", "ecrs": "Análise ECRS",
+        "ganho": "Ganho estimado", "tempo_final": "Tempo Final",
+        "melhoria": "Melhoria - Kaizens necessários", "qual": "Qual?", "oque": "O que é?",
+        "total": "Total", "reducao": "Redução total:",
+    },
+    "en": {
+        "title": "SMED - Single Minute Exchange of Die",
+        "atividade": "Activity: {}", "data_analise": "Analysis date:",
+        "elaborador": "Author:", "revisao": "Revision:", "data_revisao": "Revision date:",
+        "tarefa": "Task", "task": "No.", "descricao": "Description",
+        "inicio": "Start", "fim": "End", "tempo": "Time",
+        "ie": "I x E analysis", "interna": "Internal", "externa": "External",
+        "interno": "Internal", "externo": "External", "ecrs": "ECRS analysis",
+        "ganho": "Estimated gain", "tempo_final": "Final time",
+        "melhoria": "Improvement - Kaizens needed", "qual": "Which?", "oque": "What is it?",
+        "total": "Total", "reducao": "Total reduction:",
+    },
+}
 
 FMT_CLOCK = "hh:mm"
 FMT_DUR = "[h]:mm:ss"
@@ -98,6 +127,7 @@ def build_workbook(project: dict) -> Workbook:
     basic = project.get("basic", {})
     tasks = project.get("tasks", [])
     analysis = project.get("analysis", {})
+    tr = _L.get(get_lang(), _L["pt"])
 
     section = project.get("section_label") or basic.get("atividade") or "SMED"
     wb = Workbook()
@@ -116,7 +146,7 @@ def build_workbook(project: dict) -> Workbook:
 
     # --- Title B2:S2 ---
     ws.merge_cells("B2:S2")
-    _set(ws, "B2", "SMED - Single Minute Exchange of Die",
+    _set(ws, "B2", tr["title"],
          font=_font(bold=True, white=True, size=13), fill=_fill(TEAL), align=_align())
     for col in "CDEFGHIJKLMNOPQRS":
         _set(ws, f"{col}2", fill=_fill(TEAL), align=_align())
@@ -124,13 +154,13 @@ def build_workbook(project: dict) -> Workbook:
 
     # --- Basic info rows 4-5 ---
     ws.merge_cells("B4:G5")
-    _set(ws, "B4", f"Atividade: {basic.get('atividade', '')}",
+    _set(ws, "B4", tr["atividade"].format(basic.get('atividade', '')),
          font=_font(bold=True), fill=_fill(LIGHT), align=_align("left"))
     for coord in ("C4", "D4", "E4", "F4", "G4", "B5", "C5", "D5", "E5", "F5", "G5"):
         _set(ws, coord, fill=_fill(LIGHT))
 
     ws.merge_cells("H4:I4")
-    _set(ws, "H4", "Data análise:", font=_font(bold=True), align=_align("left"))
+    _set(ws, "H4", tr["data_analise"], font=_font(bold=True), align=_align("left"))
     ws.merge_cells("H5:I5")
     d = _parse_date(basic.get("data_analise"))
     _set(ws, "H5", d or basic.get("data_analise", ""), font=_font(), align=_align("left"),
@@ -138,18 +168,18 @@ def build_workbook(project: dict) -> Workbook:
     _set(ws, "I4"); _set(ws, "I5")
 
     ws.merge_cells("J4:P4")
-    _set(ws, "J4", "Elaborador:", font=_font(bold=True), align=_align("left"))
+    _set(ws, "J4", tr["elaborador"], font=_font(bold=True), align=_align("left"))
     ws.merge_cells("J5:P5")
     _set(ws, "J5", basic.get("aplicadores", ""), font=_font(), align=_align("left"))
     for col in "KLMNOP":
         _set(ws, f"{col}4"); _set(ws, f"{col}5")
 
     ws.merge_cells("Q4:R4")
-    _set(ws, "Q4", "Revisão:", font=_font(bold=True), align=_align("left"))
+    _set(ws, "Q4", tr["revisao"], font=_font(bold=True), align=_align("left"))
     ws.merge_cells("Q5:R5")
     _set(ws, "Q5", basic.get("revisao", ""), font=_font(), align=_align("left"))
     _set(ws, "R4"); _set(ws, "R5")
-    _set(ws, "S4", "Data da revisão:", font=_font(bold=True), align=_align("left"))
+    _set(ws, "S4", tr["data_revisao"], font=_font(bold=True), align=_align("left"))
     dr = _parse_date(basic.get("data_revisao"))
     _set(ws, "S5", dr or basic.get("data_revisao", ""), font=_font(), align=_align("left"),
          fmt=FMT_DATE if dr else None)
@@ -159,24 +189,24 @@ def build_workbook(project: dict) -> Workbook:
     def hcell(coord, text=None):
         _set(ws, coord, text, font=hf, fill=_fill(TEAL), align=_align())
 
-    ws.merge_cells("B7:B8"); hcell("B7", "Tarefa")
-    ws.merge_cells("C7:C8"); hcell("C7", "Task")
+    ws.merge_cells("B7:B8"); hcell("B7", tr["tarefa"])
+    ws.merge_cells("C7:C8"); hcell("C7", tr["task"])
     ws.merge_cells("D7:G7"); hcell("D7", str(section).upper())
     for col in "EFG":
         hcell(f"{col}7")
-    hcell("D8", "Descrição"); hcell("E8", "Início"); hcell("F8", "Fim"); hcell("G8", "Tempo")
-    ws.merge_cells("H7:I7"); hcell("H7", "Análise I x E"); hcell("I7")
-    hcell("H8", "Interna"); hcell("I8", "Externa")
-    ws.merge_cells("J7:K7"); hcell("J7", "Tempo"); hcell("K7")
-    hcell("J8", "Interno"); hcell("K8", "Externo")
-    ws.merge_cells("L7:O7"); hcell("L7", "Análise ECRS")
+    hcell("D8", tr["descricao"]); hcell("E8", tr["inicio"]); hcell("F8", tr["fim"]); hcell("G8", tr["tempo"])
+    ws.merge_cells("H7:I7"); hcell("H7", tr["ie"]); hcell("I7")
+    hcell("H8", tr["interna"]); hcell("I8", tr["externa"])
+    ws.merge_cells("J7:K7"); hcell("J7", tr["tempo"]); hcell("K7")
+    hcell("J8", tr["interno"]); hcell("K8", tr["externo"])
+    ws.merge_cells("L7:O7"); hcell("L7", tr["ecrs"])
     for col in "MNO":
         hcell(f"{col}7")
     hcell("L8", "E"); hcell("M8", "C"); hcell("N8", "R"); hcell("O8", "S")
-    ws.merge_cells("P7:P8"); hcell("P7", "Ganho estimado")
-    ws.merge_cells("Q7:Q8"); hcell("Q7", "Tempo Final")
-    ws.merge_cells("R7:S7"); hcell("R7", "Melhoria - Kaizens necessários"); hcell("S7")
-    hcell("R8", "Qual?"); hcell("S8", "O que é?")
+    ws.merge_cells("P7:P8"); hcell("P7", tr["ganho"])
+    ws.merge_cells("Q7:Q8"); hcell("Q7", tr["tempo_final"])
+    ws.merge_cells("R7:S7"); hcell("R7", tr["melhoria"]); hcell("S7")
+    hcell("R8", tr["qual"]); hcell("S8", tr["oque"])
     ws.row_dimensions[7].height = 20
     ws.row_dimensions[8].height = 18
 
@@ -229,7 +259,7 @@ def build_workbook(project: dict) -> Workbook:
 
     # --- Totals row ---
     tot = last + 1
-    _set(ws, f"B{tot}", "Total", font=_font(bold=True), fill=_fill(LIGHT), align=_align())
+    _set(ws, f"B{tot}", tr["total"], font=_font(bold=True), fill=_fill(LIGHT), align=_align())
     for col in "CDEF":
         _set(ws, f"{col}{tot}", fill=_fill(LIGHT))
     _set(ws, f"G{tot}", f"=SUBTOTAL(9,G{first}:G{last})", font=_font(bold=True),
@@ -250,7 +280,7 @@ def build_workbook(project: dict) -> Workbook:
     # --- Reduction % row ---
     pct = tot + 1
     ws.merge_cells(f"N{pct}:P{pct}")
-    _set(ws, f"N{pct}", "Redução total:", font=_font(bold=True), fill=_fill(LIGHT), align=_align("right"))
+    _set(ws, f"N{pct}", tr["reducao"], font=_font(bold=True), fill=_fill(LIGHT), align=_align("right"))
     for col in "OP":
         _set(ws, f"{col}{pct}", fill=_fill(LIGHT))
     _set(ws, f"Q{pct}", f'=IF(G{tot}=0,0,1-(Q{tot}/G{tot}))', font=_font(bold=True),
