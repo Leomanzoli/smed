@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>SMED Up</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@stlite/browser@1.8.1/build/stlite.css"
+    />
+    <style>
+      html,
+      body,
+      #root {
+        height: 100%;
+        margin: 0;
+      }
+      #stlite-loading {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        padding: 2rem;
+        color: #007e7a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="stlite-loading">Carregando SMED Up… · Loading…</div>
+    </div>
+    <script type="module">
+      // In-browser Streamlit (stlite). The app runs 100% client-side: no server,
+      // no data leaves the user's device. Files below are fetched from this site
+      // and mounted onto Pyodide's virtual file system.
+      import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@1.8.1/build/stlite.js";
+
+      mount(
+        {
+          requirements: ["openpyxl", "pandas"],
+          entrypoint: "streamlit_app.py",
+          streamlitConfig: {
+            "theme.primaryColor": "#007E7A",
+            "client.toolbarMode": "viewer",
+            "client.showErrorDetails": true,
+          },
+          files: {
+            "streamlit_app.py": { url: "./streamlit_app.py" },
+            "smed/__init__.py": { url: "./smed/__init__.py" },
+            "smed/compute.py": { url: "./smed/compute.py" },
+            "smed/i18n.py": { url: "./smed/i18n.py" },
+            "smed/state.py": { url: "./smed/state.py" },
+            "smed/project_io.py": { url: "./smed/project_io.py" },
+            "smed/views.py": { url: "./smed/views.py" },
+            "smed/excel_field.py": { url: "./smed/excel_field.py" },
+            "smed/excel_smed.py": { url: "./smed/excel_smed.py" },
+            "smed/excel_action.py": { url: "./smed/excel_action.py" },
+            "assets/leonardo.jpg": { url: "./assets/leonardo.jpg" },
+            "assets/logo sodexo.png": { url: "./assets/logo%20sodexo.png" },
+            "assets/Logo vale.png": { url: "./assets/Logo%20vale.png" },
+          },
+        },
+        document.getElementById("root"),
+      );
+    </script>
+  </body>
+</html>

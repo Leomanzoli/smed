@@ -1,11 +1,16 @@
 """SMED Up — Streamlit app entry point (deployable to streamlit.app)."""
 from __future__ import annotations
 
+import sys
+
 import streamlit as st
 
 from smed import project_io, views
 from smed.i18n import get_lang, set_lang, t
 from smed.state import ensure_project, get_project, reset_project
+
+# True when running client-side in the browser (stlite / Pyodide / WebAssembly).
+IS_BROWSER = sys.platform == "emscripten"
 
 st.set_page_config(page_title="SMED Up", page_icon="⏱️", layout="wide")
 
@@ -108,7 +113,7 @@ with st.sidebar:
 if not st.session_state.get("consent"):
     st.title("⏱️ " + t("app.title"))
     st.subheader(t("consent.title"))
-    st.info(t("consent.body"))
+    st.info(t("consent.body_browser") if IS_BROWSER else t("consent.body"))
     if st.button(t("consent.accept"), type="primary"):
         st.session_state["consent"] = True
         st.rerun()
@@ -127,4 +132,4 @@ pages = [
 ]
 st.navigation(pages).run()
 
-st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up · build 2026-07-01-c")
+st.caption(f"{t('footer.made_by')} Leonardo Manzoli Stoco · SMED Up · build 2026-07-01-d")

@@ -57,6 +57,19 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
     },
     "consent.accept": {"pt": "Li e concordo", "en": "I have read and agree"},
+    "consent.body_browser": {
+        "pt": (
+            "Este aplicativo roda **inteiramente no seu navegador** — não há servidor e "
+            "**nenhum dado é enviado** para fora do seu dispositivo. Os dados existem apenas "
+            "nesta aba e são descartados ao fechá-la. Baixe seus arquivos para guardar as "
+            "informações."
+        ),
+        "en": (
+            "This app runs **entirely in your browser** — there is no server and **no data is "
+            "sent** off your device. Data exists only in this tab and is discarded when you "
+            "close it. Download your files to keep the information."
+        ),
+    },
 
     # ---- home ----
     "home.lead": {
@@ -159,6 +172,11 @@ STRINGS: dict[str, dict[str, str]] = {
     "analyze.converted_help": {
         "pt": "Percentual de tarefas internas iniciais que passaram a externas.",
         "en": "Share of initially internal tasks that became external.",
+    },
+    "analyze.converted_ei": {"pt": "Convertido Externo→Interno", "en": "Converted External→Internal"},
+    "analyze.converted_ei_help": {
+        "pt": "Percentual de tarefas externas iniciais que passaram a internas.",
+        "en": "Share of initially external tasks that became internal.",
     },
     "analyze.changed": {"pt": "Tarefas alteradas", "en": "Changed tasks"},
     "analyze.preview": {"pt": "Prévia do formulário SMED", "en": "SMED form preview"},

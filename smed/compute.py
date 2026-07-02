@@ -94,7 +94,8 @@ def compute_totals(project: dict) -> dict:
     total_diff = total_i = total_e = total_ganho = total_final = 0
     init_i = init_e = init_none = 0          # initial time split (by ie_inicial)
     final_i = final_e = 0                     # final time split (by analysis ie)
-    init_i_count = changed_count = conv_i_to_e = 0
+    init_i_count = init_e_count = 0
+    changed_count = conv_i_to_e = conv_e_to_i = 0
     analysis_map = project.get("analysis", {})
     tasks = project.get("tasks", [])
     for task in tasks:
@@ -113,6 +114,7 @@ def compute_totals(project: dict) -> dict:
             init_i_count += 1
         elif ie_init == "externa":
             init_e += r["diff"]
+            init_e_count += 1
         else:
             init_none += r["diff"]
         if ie_final == "interna":
@@ -123,9 +125,12 @@ def compute_totals(project: dict) -> dict:
             changed_count += 1
             if ie_init == "interna" and ie_final == "externa":
                 conv_i_to_e += 1
+            elif ie_init == "externa" and ie_final == "interna":
+                conv_e_to_i += 1
 
     reduction = (1 - (total_final / total_diff)) if total_diff > 0 else 0.0
     conversion_rate = (conv_i_to_e / init_i_count) if init_i_count > 0 else 0.0
+    conversion_rate_ei = (conv_e_to_i / init_e_count) if init_e_count > 0 else 0.0
     return {
         "diff": total_diff,
         "tempo_i": total_i,
@@ -139,8 +144,11 @@ def compute_totals(project: dict) -> dict:
         "final_i": final_i,
         "final_e": final_e,
         "init_i_count": init_i_count,
+        "init_e_count": init_e_count,
         "changed_count": changed_count,
         "conv_i_to_e": conv_i_to_e,
+        "conv_e_to_i": conv_e_to_i,
         "conversion_rate": conversion_rate,
+        "conversion_rate_ei": conversion_rate_ei,
         "task_count": len(tasks),
     }

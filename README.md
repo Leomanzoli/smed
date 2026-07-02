@@ -32,11 +32,30 @@ Abra o endereço mostrado (ex.: http://localhost:8501).
 
 > O código Python roda no servidor da Streamlit e não é enviado ao navegador.
 
+## Publicar no GitHub Pages (100% no navegador, via stlite)
+
+Esta opção roda o app **inteiramente no navegador** do usuário (WebAssembly/[stlite](https://github.com/whitphx/stlite)),
+sem servidor — **nenhum dado sai do dispositivo**. Ideal para LGPD e para hospedar no seu
+próprio domínio `*.github.io`.
+
+1. Os arquivos `index.html` e `.nojekyll` já estão na raiz do repositório.
+2. No GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch**.
+3. Selecione **Branch: `main`** e **Folder: `/ (root)`**, e salve.
+4. Aguarde o build; o app fica em `https://<usuário>.github.io/<repositório>/`
+   (ex.: `https://leomanzoli.github.io/smed/`).
+
+> A primeira carga baixa o runtime Python (uma vez, fica em cache). Depois roda offline no
+> navegador. O mesmo código Python serve tanto ao Streamlit Cloud quanto ao stlite — o texto
+> de privacidade se adapta automaticamente ao ambiente (`sys.platform == "emscripten"`).
+
 ## Privacidade (LGPD)
 
-O app roda em servidor. Os dados digitados ficam apenas na **sessão** (memória do servidor),
-não são armazenados em banco de dados/disco e são descartados ao encerrar a sessão. Baixe os
-arquivos (Excel/JSON) para guardar as informações. Evite inserir dados pessoais sensíveis.
+- **No GitHub Pages (stlite):** o app roda **inteiramente no seu navegador**. Não há servidor,
+  backend ou banco de dados, e **nenhum dado é enviado** para fora do dispositivo. Ao fechar a
+  aba, tudo é descartado. Baixe os arquivos (Excel/JSON) para guardar as informações.
+- **No Streamlit Community Cloud:** o app roda em servidor; os dados ficam apenas na **sessão**
+  (memória do servidor), não são armazenados e são descartados ao encerrar. Evite dados
+  pessoais sensíveis.
 
 ## Estrutura
 
@@ -50,8 +69,10 @@ smed/
   excel_smed.py           # formulário SMED (Excel)
   excel_field.py          # coleta de campo (Excel) + importação
   excel_action.py         # plano 5W2H (Excel)
-  views.py                # páginas (Início, Coleta, Análise, 5W2H, Ajuda, Privacidade, Sobre)
-.streamlit/config.toml    # tema
+  views.py                # páginas (Início, Coleta, Análise, 5W2H, Ajuda, Privacidade)
+.streamlit/config.toml    # tema (Streamlit Cloud / local)
+index.html                # entrada do stlite (GitHub Pages, roda no navegador)
+.nojekyll                 # serve todos os arquivos no GitHub Pages (inclui .streamlit/ e smed/)
 assets/                   # modelo de referência, foto e logos
 ```
 

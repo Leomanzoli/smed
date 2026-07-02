@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from datetime import date, datetime, time as dtime, timedelta
 
 import pandas as pd
@@ -14,6 +15,8 @@ from .state import get_project, new_id, prune_analysis
 
 ASSETS = "assets"
 TIME_STEP = timedelta(minutes=1)
+# True when running client-side in the browser (stlite / Pyodide / WebAssembly).
+IS_BROWSER = sys.platform == "emscripten"
 
 
 def _s(value) -> str:
@@ -305,10 +308,11 @@ def analyze() -> None:
 
     totals = compute_totals(project)
     st.subheader(t("analyze.totals"))
-    m1, m2, m3 = st.columns(3)
+    m1, m2, m3, m4 = st.columns(4)
     m1.metric(t("analyze.total_time"), format_hms(totals["diff"]))
-    m2.metric(t("analyze.total_gain"), format_hms(totals["ganho"]))
-    m3.metric(t("analyze.reduction"), f"{totals['reduction'] * 100:.0f}%")
+    m2.metric(t("analyze.total_final"), format_hms(totals["tempo_final"]))
+    m3.metric(t("analyze.total_gain"), format_hms(totals["ganho"]))
+    m4.metric(t("analyze.reduction"), f"{totals['reduction'] * 100:.0f}%")
 
     st.markdown(f"**{t('analyze.ie_split')}**")
     split_df = pd.DataFrame(
@@ -319,11 +323,14 @@ def analyze() -> None:
         }
     )
     st.dataframe(split_df, hide_index=True, width="stretch")
-    c4, c5 = st.columns(2)
+    c4, c5, c6 = st.columns(3)
     c4.metric(
         t("analyze.converted"), f"{totals['conversion_rate'] * 100:.0f}%",
         help=t("analyze.converted_help"))
-    c5.metric(t("analyze.changed"), f"{totals['changed_count']}/{totals['task_count']}")
+    c5.metric(
+        t("analyze.converted_ei"), f"{totals['conversion_rate_ei'] * 100:.0f}%",
+        help=t("analyze.converted_ei_help"))
+    c6.metric(t("analyze.changed"), f"{totals['changed_count']}/{totals['task_count']}")
 
     # Read-only preview of the SMED form that will be generated.
     st.markdown(f"**{t('analyze.preview')}**")
@@ -517,6 +524,43 @@ def help_page() -> None:
 # --------------------------------------------------------------------------- #
 def privacy() -> None:
     st.header(t("privacy.title"))
+    if IS_BROWSER:
+        if get_lang() == "en":
+            st.markdown(
+                """
+This application runs **entirely in your browser** (via stlite / WebAssembly). There is
+**no server**.
+
+- **Local processing:** everything you type is processed **on your own device**. **No data is
+  sent to any server** — there is no backend, database, or storage. Closing the tab discards it.
+- **Your control:** you can export/download all your data at any time and clear it with
+  *New / clear*.
+- **No tracking:** the app does not create accounts or profiles of individuals.
+
+For LGPD purposes, because no personal data leaves your device, the exposure is minimal. Even
+so, the responsible organization should minimize personal data (names, IDs, e-mails) entered
+into the 5W2H plan.
+"""
+            )
+        else:
+            st.markdown(
+                """
+Este aplicativo roda **inteiramente no seu navegador** (via stlite / WebAssembly). **Não há
+servidor**.
+
+- **Processamento local:** tudo o que você digita é processado **no seu próprio dispositivo**.
+  **Nenhum dado é enviado a servidores** — não há backend, banco de dados ou armazenamento. Ao
+  fechar a aba, tudo é descartado.
+- **Seu controle:** você pode exportar/baixar todos os seus dados a qualquer momento e limpar
+  em *Novo / limpar*.
+- **Sem rastreamento:** o aplicativo não cria contas nem perfis de pessoas.
+
+Para fins de LGPD, como nenhum dado pessoal sai do seu dispositivo, a exposição é mínima. Ainda
+assim, a organização responsável deve minimizar dados pessoais (nomes, matrículas, e-mails)
+inseridos no plano 5W2H.
+"""
+            )
+        return
     if get_lang() == "en":
         st.markdown(
             """
