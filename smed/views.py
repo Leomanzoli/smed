@@ -180,16 +180,21 @@ def collect() -> None:
 
     st.header(t("basic.title"))
     basic["atividade"] = st.text_input(t("basic.atividade"), value=_s(basic.get("atividade")))
-    basic["aplicadores"] = st.text_input(t("basic.aplicadores"), value=_s(basic.get("aplicadores")))
-    d1 = st.date_input(
+    r1c1, r1c2 = st.columns(2)
+    basic["aplicadores"] = r1c1.text_input(
+        t("basic.aplicadores"), value=_s(basic.get("aplicadores")))
+    basic["area"] = r1c2.text_input(t("basic.area"), value=_s(basic.get("area")))
+    r2c1, r2c2 = st.columns(2)
+    basic["gerencia"] = r2c1.text_input(t("basic.gerencia"), value=_s(basic.get("gerencia")))
+    basic["supervisao"] = r2c2.text_input(
+        t("basic.supervisao"), value=_s(basic.get("supervisao")))
+    basic["revisao"] = st.text_input(t("basic.revisao"), value=_s(basic.get("revisao")))
+    r3c1, r3c2 = st.columns(2)
+    d1 = r3c1.date_input(
         t("basic.data_analise"), value=_parse_date(basic.get("data_analise")),
         format="DD/MM/YYYY")
     basic["data_analise"] = _fmt_date(d1)
-    basic["area"] = st.text_input(t("basic.area"), value=_s(basic.get("area")))
-    basic["gerencia"] = st.text_input(t("basic.gerencia"), value=_s(basic.get("gerencia")))
-    basic["supervisao"] = st.text_input(t("basic.supervisao"), value=_s(basic.get("supervisao")))
-    basic["revisao"] = st.text_input(t("basic.revisao"), value=_s(basic.get("revisao")))
-    d2 = st.date_input(
+    d2 = r3c2.date_input(
         t("basic.data_revisao"), value=_parse_date(basic.get("data_revisao")),
         format="DD/MM/YYYY")
     basic["data_revisao"] = _fmt_date(d2)

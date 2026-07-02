@@ -9,6 +9,45 @@ from smed.state import ensure_project, get_project, reset_project
 
 st.set_page_config(page_title="SMED Up", page_icon="⏱️", layout="wide")
 
+# --------------------------------------------------------------------------- #
+# Responsive polish (professional mobile + desktop)
+# --------------------------------------------------------------------------- #
+st.markdown(
+    """
+    <style>
+      /* Center content with a comfortable reading width on desktop; full width on mobile */
+      .block-container {
+        max-width: 980px;
+        padding-top: 2.2rem;
+        padding-bottom: 4rem;
+      }
+      /* Card look for bordered containers (task/analysis/action cards, add forms) */
+      div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 12px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      }
+      /* Touch-friendly, consistent buttons */
+      .stButton > button,
+      .stDownloadButton > button,
+      .stFormSubmitButton > button {
+        min-height: 2.7rem;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+      /* On phones: let column rows wrap so nothing gets cramped */
+      @media (max-width: 640px) {
+        .block-container { padding-top: 1.4rem; padding-left: 1rem; padding-right: 1rem; }
+        div[data-testid="stHorizontalBlock"] { flex-wrap: wrap; gap: 0.5rem; }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+          flex: 1 1 100% !important;
+          min-width: 100% !important;
+        }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Session bootstrap
 if "lang" not in st.session_state:
     set_lang("pt")
@@ -54,7 +93,7 @@ with st.sidebar:
     if st.button(t("side.new"), width="stretch"):
         st.session_state["confirm_new"] = True
     if st.session_state.get("confirm_new"):
-        if st.button(f"⚠️ {t('side.new_confirm')}", type="primary", use_container_width=True):
+        if st.button(f"⚠️ {t('side.new_confirm')}", type="primary", width="stretch"):
             reset_project()
             st.session_state["confirm_new"] = False
             st.rerun()
