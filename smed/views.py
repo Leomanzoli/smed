@@ -149,12 +149,14 @@ def _task_form(project: dict, task: dict | None) -> None:
         descricao = st.text_area(
             t("tasks.descricao"), value=_s(task.get("descricao")) if editing else "", height=80)
         c1, c2 = st.columns(2)
-        inicio = _ssma_time_input(
-            t("tasks.inicio"), value=_parse_time(task.get("inicio")) if editing else None,
-            key=f"{form_key}_inicio")
-        fim = _ssma_time_input(
-            t("tasks.fim"), value=_parse_time(task.get("fim")) if editing else None,
-            key=f"{form_key}_fim")
+        with c1:
+            inicio = _ssma_time_input(
+                t("tasks.inicio"), value=_parse_time(task.get("inicio")) if editing else None,
+                key=f"{form_key}_inicio")
+        with c2:
+            fim = _ssma_time_input(
+                t("tasks.fim"), value=_parse_time(task.get("fim")) if editing else None,
+                key=f"{form_key}_fim")
         ie_opts = ["", "interna", "externa"]
         cur_ie = _s(task.get("ie_inicial")) if editing else ""
         ie_idx = ie_opts.index(cur_ie) if cur_ie in ie_opts else 0
@@ -231,13 +233,15 @@ def collect() -> None:
         t("basic.supervisao"), value=_s(basic.get("supervisao")))
     basic["revisao"] = st.text_input(t("basic.revisao"), value=_s(basic.get("revisao")))
     r3c1, r3c2 = st.columns(2)
-    d1 = _ssma_date_input(
-        t("basic.data_analise"), value=_parse_date(basic.get("data_analise")),
-        key="basic_data_analise")
+    with r3c1:
+        d1 = _ssma_date_input(
+            t("basic.data_analise"), value=_parse_date(basic.get("data_analise")),
+            key="basic_data_analise")
     basic["data_analise"] = _fmt_date(d1)
-    d2 = _ssma_date_input(
-        t("basic.data_revisao"), value=_parse_date(basic.get("data_revisao")),
-        key="basic_data_revisao")
+    with r3c2:
+        d2 = _ssma_date_input(
+            t("basic.data_revisao"), value=_parse_date(basic.get("data_revisao")),
+            key="basic_data_revisao")
     basic["data_revisao"] = _fmt_date(d2)
     project["section_label"] = st.text_input(
         t("basic.section_label"), value=_s(project.get("section_label")), help=t("basic.section_help"))
