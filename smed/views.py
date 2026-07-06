@@ -79,6 +79,44 @@ def _ie_label(value) -> str:
     return t("common.none")
 
 
+def _img(path: str):
+    return path if os.path.exists(path) else None
+
+
+def _img_to_base64(path: str) -> str | None:
+    try:
+        with open(path, "rb") as f:
+            import base64
+            return base64.b64encode(f.read()).decode()
+    except Exception:
+        return None
+
+
+def _round_image_html(path: str, size: int = 80) -> str | None:
+    b64 = _img_to_base64(path)
+    if not b64:
+        return None
+    ext = os.path.splitext(path)[1].lower().lstrip(".") or "jpeg"
+    if ext == "jpg":
+        ext = "jpeg"
+    return (
+        f'<img src="data:image/{ext};base64,{b64}" '
+        f'style="width:{size}px;height:{size}px;border-radius:50%;'
+        f'object-fit:cover;border:3px solid #e5e7eb;'
+        f'box-shadow:0 2px 6px rgba(0,0,0,0.12);" />'
+    )
+
+
+def _ssma_date_input(label: str, value, key: str, help: str | None = None):
+    """Date input with SSMA-style label (calendar icon + DD/MM/YYYY)."""
+    return st.date_input(f"📅 {label}", value=value, format="DD/MM/YYYY", key=key, help=help)
+
+
+def _ssma_time_input(label: str, value, key: str, help: str | None = None):
+    """Time input with SSMA-style label (clock icon + HH:MM)."""
+    return st.time_input(f"🕐 {label}", value=value, step=TIME_STEP, key=key, help=help)
+
+
 # --------------------------------------------------------------------------- #
 # Home
 # --------------------------------------------------------------------------- #
@@ -111,11 +149,12 @@ def _task_form(project: dict, task: dict | None) -> None:
         descricao = st.text_area(
             t("tasks.descricao"), value=_s(task.get("descricao")) if editing else "", height=80)
         c1, c2 = st.columns(2)
-        inicio = c1.time_input(
+        inicio = _ssma_time_input(
             t("tasks.inicio"), value=_parse_time(task.get("inicio")) if editing else None,
-            step=TIME_STEP)
-        fim = c2.time_input(
-            t("tasks.fim"), value=_parse_time(task.get("fim")) if editing else None, step=TIME_STEP)
+            key=f"{form_key}_inicio")
+        fim = _ssma_time_input(
+            t("tasks.fim"), value=_parse_time(task.get("fim")) if editing else None,
+            key=f"{form_key}_fim")
         ie_opts = ["", "interna", "externa"]
         cur_ie = _s(task.get("ie_inicial")) if editing else ""
         ie_idx = ie_opts.index(cur_ie) if cur_ie in ie_opts else 0
@@ -192,13 +231,13 @@ def collect() -> None:
         t("basic.supervisao"), value=_s(basic.get("supervisao")))
     basic["revisao"] = st.text_input(t("basic.revisao"), value=_s(basic.get("revisao")))
     r3c1, r3c2 = st.columns(2)
-    d1 = r3c1.date_input(
+    d1 = _ssma_date_input(
         t("basic.data_analise"), value=_parse_date(basic.get("data_analise")),
-        format="DD/MM/YYYY")
+        key="basic_data_analise")
     basic["data_analise"] = _fmt_date(d1)
-    d2 = r3c2.date_input(
+    d2 = _ssma_date_input(
         t("basic.data_revisao"), value=_parse_date(basic.get("data_revisao")),
-        format="DD/MM/YYYY")
+        key="basic_data_revisao")
     basic["data_revisao"] = _fmt_date(d2)
     project["section_label"] = st.text_input(
         t("basic.section_label"), value=_s(project.get("section_label")), help=t("basic.section_help"))
@@ -607,16 +646,16 @@ exemplo, nomes, matrículas, e-mails) inseridos no plano 5W2H e minimizá-los qu
 # --------------------------------------------------------------------------- #
 # About / branding (compact, rendered in the sidebar)
 # --------------------------------------------------------------------------- #
-def _img(path: str):
-    return path if os.path.exists(path) else None
-
-
 def about_sidebar() -> None:
     """Render developer/branding info compactly inside the sidebar."""
     with st.expander(t("about.title")):
         photo = _img(os.path.join(ASSETS, "leonardo.jpg"))
         if photo:
-            st.image(photo, width=120)
+            html = _round_image_html(photo, size=80)
+            if html:
+                st.markdown(html, unsafe_allow_html=True)
+            else:
+                st.image(photo, width=80)
         st.markdown(f"**{t('about.dev')}**")
         st.caption(t("about.role"))
         st.caption(t("about.context"))

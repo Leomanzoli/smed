@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import sys
 
 import streamlit as st
@@ -50,6 +51,34 @@ st.markdown(
           min-width: 100% !important;
         }
       }
+      /* SSMA-style date/time inputs */
+      [data-testid="stDateInput"] label p,
+      [data-testid="stTimeInput"] label p {
+        font-weight: 600 !important;
+        color: #374151 !important;
+      }
+      [data-testid="stDateInput"] input,
+      [data-testid="stTimeInput"] input {
+        border-radius: 8px !important;
+        border: 1px solid #d1d5db !important;
+        min-height: 2.6rem !important;
+        font-variant-numeric: tabular-nums !important;
+      }
+      [data-testid="stDateInput"] input:focus,
+      [data-testid="stTimeInput"] input:focus {
+        border-color: #374151 !important;
+        box-shadow: 0 0 0 2px rgba(55, 65, 81, 0.15) !important;
+      }
+      [data-testid="stDateInput"] [data-testid="stIconMaterial"] svg,
+      [data-testid="stTimeInput"] [data-testid="stIconMaterial"] svg {
+        color: #374151 !important;
+      }
+      /* Centered logo on consent screen */
+      .smed-logo-center { display: flex; justify-content: center; margin-bottom: 1rem; }
+      .smed-logo-center img { max-width: 200px; width: 100%; height: auto; }
+      /* Sidebar logo */
+      .smed-sidebar-logo { margin-bottom: 0.6rem; max-width: 200px; }
+      .smed-sidebar-logo img { width: 100%; height: auto; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -64,6 +93,15 @@ ensure_project()
 # Sidebar: language, project, backup
 # --------------------------------------------------------------------------- #
 with st.sidebar:
+    logo_path = os.path.join("assets", "Logo SMED.png")
+    if os.path.exists(logo_path):
+        import base64
+        logo_b64 = base64.b64encode(open(logo_path, "rb").read()).decode()
+        st.markdown(
+            f'<div class="smed-sidebar-logo"><img src="data:image/png;base64,{logo_b64}" '
+            f'alt="Fábrica de SMED" /></div>',
+            unsafe_allow_html=True,
+        )
     st.markdown("### ⏱️ SMED Up")
     lang = st.radio(
         t("common.language"),
@@ -117,6 +155,15 @@ with st.sidebar:
 # Consent gate (LGPD)
 # --------------------------------------------------------------------------- #
 if not st.session_state.get("consent"):
+    logo_path = os.path.join("assets", "Logo SMED.png")
+    if os.path.exists(logo_path):
+        import base64
+        logo_b64 = base64.b64encode(open(logo_path, "rb").read()).decode()
+        st.markdown(
+            f'<div class="smed-logo-center"><img src="data:image/png;base64,{logo_b64}" '
+            f'alt="Fábrica de SMED" /></div>',
+            unsafe_allow_html=True,
+        )
     st.title("⏱️ " + t("app.title"))
     st.subheader(t("consent.title"))
     st.info(t("consent.body_browser") if IS_BROWSER else t("consent.body"))
